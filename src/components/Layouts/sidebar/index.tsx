@@ -5,19 +5,27 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { NAV_DATA } from "./data";
 import { ArrowLeftIcon, ChevronUp } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
+import { useSession } from "next-auth/react";
+import { NAV_DATA as NAV_PATIENT } from "./data/nav-patient";
+import { NAV_DATA as NAV_DOCTOR } from "./data/nav-doctor";
+import { NAV_DATA as NAV_ADMINSUP } from "./data/nav-adminsup";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const { data: session } = useSession();
+  const role = session?.user?.role || "doctor";
+
+  let NAV_DATA = NAV_DOCTOR;
+  if (role === "patient") NAV_DATA = NAV_PATIENT;
+  if (role === "admin-sup") NAV_DATA = NAV_ADMINSUP;
 
   const toggleExpanded = (title: string) => {
     setExpandedItems((prev) => (prev.includes(title) ? [] : [title]));
-
     // Uncomment the following line to enable multiple expanded items
     // setExpandedItems((prev) =>
     //   prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title],
@@ -33,14 +41,13 @@ export function Sidebar() {
             if (!expandedItems.includes(item.title)) {
               toggleExpanded(item.title);
             }
-
             // Break the loop
             return true;
           }
         });
       });
     });
-  }, [pathname]);
+  }, [pathname, NAV_DATA]);
 
   return (
     <>
@@ -66,7 +73,7 @@ export function Sidebar() {
         <div className="flex h-full flex-col py-10 pl-[25px] pr-[7px]">
           <div className="relative pr-4.5">
             <Link
-              href={"/dashboard/admin"}
+              href={role === "patient" ? "/dashboard/patient" : role === "admin-sup" ? "/dashboard/admin-sup" : "/dashboard/admin"}
               onClick={() => isMobile && toggleSidebar()}
               className="px-0 py-2.5 min-[850px]:py-0"
             >
@@ -79,7 +86,6 @@ export function Sidebar() {
                 className="absolute left-3/4 right-4.5 top-1/2 -translate-y-1/2 text-right"
               >
                 <span className="sr-only">Close Menu</span>
-
                 <ArrowLeftIcon className="ml-auto size-7" />
               </button>
             )}
@@ -146,7 +152,8 @@ export function Sidebar() {
                             const href =
                               "url" in item
                                 ? item.url + ""
-                                : "/" +
+                                :
+                                  "/" +
                                   item.title.toLowerCase().split(" ").join("-");
 
                             return (
