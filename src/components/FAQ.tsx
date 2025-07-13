@@ -25,7 +25,7 @@ const FAQ: React.FC = () => {
                         <div key={index} className="mb-7">
                             <Disclosure>
                                 {({ open }) => (
-                                    <>
+                                    <div>
                                         <DisclosureButton className="flex items-center justify-between w-full px-4 pt-7 text-lg text-left border-t">
                                             <span className="text-2xl font-semibold">{faq.question}</span>
                                             {open ? <BiMinus className="w-5 h-5 text-secondary" /> : <BiPlus className="w-5 h-5 text-secondary" />}
@@ -33,7 +33,7 @@ const FAQ: React.FC = () => {
                                         <DisclosurePanel className="px-4 pt-4 pb-2 text-foreground-accent">
                                             {faq.answer}
                                         </DisclosurePanel>
-                                    </>
+                                    </div>
                                 )}
                             </Disclosure>
                         </div>

@@ -11,21 +11,33 @@
   "dependencies": {
     "@headlessui/react": "^2.1.8",
     "@next/third-parties": "^14.2.13",
+    "apexcharts": "^4.7.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dayjs": "^1.11.13",
+    "flatpickr": "^4.6.13",
     "framer-motion": "^11.11.9",
-    "next": "^14.2.13",
-    "react": "^18",
-    "react-dom": "^18",
-    "react-icons": "^5.3.0"
+    "jsvectormap": "^1.7.0",
+    "next": "^15.3.5",
+    "next-themes": "^0.4.6",
+    "nextjs-toploader": "^3.8.16",
+    "react": "^19.0.0",
+    "react-apexcharts": "^1.7.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.3.0",
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.13",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "@types/node": "^22.16.3",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.31.0",
+    "eslint-config-next": "^15.1.6",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.6.14",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
   }
 }
