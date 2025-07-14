@@ -27,12 +27,13 @@ export function TextAreaGroup({
   handleChange,
 }: PropsType) {
   const id = useId();
+  const isUrdu = /[\u0600-\u06FF]/.test(label);
 
   return (
     <div className={cn(className)}>
       <label
         htmlFor={id}
-        className="mb-3 block text-lg font-medium text-dark dark:text-white"
+        className={`mb-3 block text-lg font-medium text-dark dark:text-white ${isUrdu ? 'urdu-text' : ''}`}
       >
         {label}
       </label>
@@ -48,6 +49,7 @@ export function TextAreaGroup({
           className={cn(
             "w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-5.5 py-4 text-lg text-dark outline-none transition focus:border-primary disabled:cursor-default disabled:bg-gray-2 data-[active=true]:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary dark:disabled:bg-dark dark:data-[active=true]:border-primary",
             icon && "py-5 pl-13 pr-5",
+            isUrdu ? 'urdu-text' : '',
           )}
           required={required}
           disabled={disabled}

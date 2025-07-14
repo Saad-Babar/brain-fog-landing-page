@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Jameel Noori Nastaleeq Font */
+@font-face {
+  font-family: 'Jameel Noori Nastaleeq';
+  src: url('/fonts/Jameel-Noori-Nastaleeq.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -26,6 +35,8 @@ body {
   font-optical-sizing: auto;
   font-style: normal;
 }
+
+
 
 @layer utilities {
   .text-balance {

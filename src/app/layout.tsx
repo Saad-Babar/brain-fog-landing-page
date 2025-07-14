@@ -40,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${manrope.className} ${sourceSans.className} antialiased`}
+        className={`${manrope.className} ${sourceSans.className} antialiased urdu-font`}
       >
         <Providers>
           {children}

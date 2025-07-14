@@ -1,5 +1,5 @@
 export const heroDetails = {
-    heading: 'Smart, Secure, Simple Financial Management',
-    subheading: 'From effortless budgeting to real-time investment insights, Finwise puts you in control of your money like never before',
+    heading: 'AI-Driven Cognitive Health Screening for the Digital Generation',
+    subheading: 'An Early Detection System for Brain Fog and Cognitive Decline Using Behavioral and Digital Biomarkers',
     centerImageSrc: '/images/hero-mockup.webp',
 }

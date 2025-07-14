@@ -19,13 +19,13 @@ export const NAV_DATA = [
         icon: Icons.Alphabet,
         items: [
           {
-            title: "Fill Form",
+            title: "English Form",
             url: "/dashboard/patient/mmse-form",
           },
-        //   {
-        //     title: "Form Layout",
-        //     url: "/dashboard/admin/forms/form-layout",
-        //   },
+          {
+            title: "URDU Form Layout",
+            url: "/dashboard/patient/mmse-form-urdu",
+          },
         ],
       },
       {
