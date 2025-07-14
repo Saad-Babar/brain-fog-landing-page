@@ -46,19 +46,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!interpretation || !['Normal', 'Cognitive impairment'].includes(interpretation)) {
-      return NextResponse.json(
-        { error: 'Invalid interpretation' },
-        { status: 400 }
-      );
-    }
-
     // Calculate individual section scores
     const orientationScore = calculateOrientationScore(orientation);
     const registrationScore = calculateRegistrationScore(registration);
     const attentionScore = calculateAttentionScore(attention);
     const recallScore = calculateRecallScore(recall);
     const languageScore = calculateLanguageScore(language);
+
+    // Calculate total score and interpretation on the server side
+    const calculatedTotalScore = orientationScore + registrationScore + attentionScore + recallScore + languageScore;
+    const calculatedInterpretation = calculatedTotalScore >= 24 ? "Normal" : "Cognitive impairment";
+
+    // Validate that the frontend score matches the backend calculation
+    if (Math.abs(calculatedTotalScore - totalScore) > 2) {
+      console.warn(`Score mismatch: Frontend=${totalScore}, Backend=${calculatedTotalScore}`);
+    }
+
+    // Use the server-calculated interpretation for consistency
+    const finalInterpretation = calculatedInterpretation;
 
     // Create new MMSE assessment
     const newAssessment = new MMSEAssessment({
@@ -83,8 +88,8 @@ export async function POST(request: NextRequest) {
         ...language,
         score: languageScore
       },
-      totalScore,
-      interpretation,
+      totalScore: calculatedTotalScore,
+      interpretation: finalInterpretation,
       drawingImage,
       assessmentDate: new Date()
     });
@@ -97,8 +102,8 @@ export async function POST(request: NextRequest) {
       { 
         message: 'MMSE assessment saved successfully',
         assessmentId: newAssessment._id,
-        totalScore,
-        interpretation
+        totalScore: calculatedTotalScore,
+        interpretation: finalInterpretation
       },
       { status: 201 }
     );
@@ -115,48 +120,210 @@ export async function POST(request: NextRequest) {
 // Helper functions to calculate scores
 function calculateOrientationScore(orientation: any): number {
   let score = 0;
-  if (orientation.yearAnswer?.trim()) score += 1;
-  if (orientation.seasonAnswer?.trim()) score += 1;
-  if (orientation.dateAnswer?.trim()) score += 1;
-  if (orientation.dayAnswer?.trim()) score += 1;
-  if (orientation.monthAnswer?.trim()) score += 1;
-  if (orientation.stateAnswer?.trim()) score += 1;
-  if (orientation.countryAnswer?.trim()) score += 1;
-  if (orientation.hospitalAnswer?.trim()) score += 1;
-  if (orientation.floorAnswer?.trim()) score += 1;
-  if (orientation.cityAnswer?.trim()) score += 1;
+  
+  // Get current date for validation
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.toLocaleString('en-US', { month: 'long' });
+  const currentDay = now.toLocaleString('en-US', { weekday: 'long' });
+  
+  // Determine current season
+  const month = now.getMonth();
+  let currentSeason = '';
+  if (month >= 2 && month <= 4) currentSeason = 'Spring';
+  else if (month >= 5 && month <= 7) currentSeason = 'Summer';
+  else if (month >= 8 && month <= 10) currentSeason = 'Autumn';
+  else currentSeason = 'Winter';
+  
+  // Validate each answer with some tolerance for variations
+  const yearAnswer = orientation.yearAnswer?.trim().toLowerCase();
+  if (yearAnswer === currentYear.toString() || 
+      yearAnswer === (currentYear - 1).toString() || 
+      yearAnswer === (currentYear + 1).toString()) {
+    score += 1;
+  }
+  
+  const seasonAnswer = orientation.seasonAnswer?.trim().toLowerCase();
+  if (seasonAnswer === currentSeason.toLowerCase() || 
+      seasonAnswer === 'summer' || seasonAnswer === 'winter' || 
+      seasonAnswer === 'spring' || seasonAnswer === 'autumn' ||
+      seasonAnswer === 'fall') {
+    score += 1;
+  }
+  
+  const dateAnswer = orientation.dateAnswer?.trim();
+  if (dateAnswer && dateAnswer.length > 0) {
+    score += 1;
+  }
+  
+  const dayAnswer = orientation.dayAnswer?.trim().toLowerCase();
+  if (dayAnswer === currentDay.toLowerCase() || 
+      dayAnswer === 'monday' || dayAnswer === 'tuesday' || 
+      dayAnswer === 'wednesday' || dayAnswer === 'thursday' || 
+      dayAnswer === 'friday' || dayAnswer === 'saturday' || 
+      dayAnswer === 'sunday') {
+    score += 1;
+  }
+  
+  const monthAnswer = orientation.monthAnswer?.trim().toLowerCase();
+  if (monthAnswer === currentMonth.toLowerCase() || 
+      monthAnswer === 'january' || monthAnswer === 'february' || 
+      monthAnswer === 'march' || monthAnswer === 'april' || 
+      monthAnswer === 'may' || monthAnswer === 'june' || 
+      monthAnswer === 'july' || monthAnswer === 'august' || 
+      monthAnswer === 'september' || monthAnswer === 'october' || 
+      monthAnswer === 'november' || monthAnswer === 'december') {
+    score += 1;
+  }
+  
+  // Location questions - more flexible
+  const stateAnswer = orientation.stateAnswer?.trim().toLowerCase();
+  if (stateAnswer && stateAnswer.length > 2) {
+    score += 1;
+  }
+  
+  const countryAnswer = orientation.countryAnswer?.trim().toLowerCase();
+  if (countryAnswer === 'pakistan' || countryAnswer === 'pak' || 
+      countryAnswer && countryAnswer.length > 2) {
+    score += 1;
+  }
+  
+  const hospitalAnswer = orientation.hospitalAnswer?.trim();
+  if (hospitalAnswer && hospitalAnswer.length > 2) {
+    score += 1;
+  }
+  
+  const floorAnswer = orientation.floorAnswer?.trim().toLowerCase();
+  if (floorAnswer && (floorAnswer.includes('floor') || 
+      floorAnswer.includes('level') || floorAnswer.includes('ground') ||
+      floorAnswer.includes('1') || floorAnswer.includes('2') || 
+      floorAnswer.includes('3') || floorAnswer.includes('4') || 
+      floorAnswer.includes('5'))) {
+    score += 1;
+  }
+  
+  const cityAnswer = orientation.cityAnswer?.trim();
+  if (cityAnswer && cityAnswer.length > 2) {
+    score += 1;
+  }
+  
   return score;
 }
 
 function calculateRegistrationScore(registration: any): number {
-  return registration.wordsTyped?.trim() ? 3 : 0;
+  const wordsTyped = registration.wordsTyped?.trim().toLowerCase();
+  
+  // Check if all three required words are present
+  const requiredWords = ['apple', 'table', 'pen'];
+  const typedWords = wordsTyped?.split(/[,\s]+/).filter((word: string) => word.length > 0) || [];
+  
+  let score = 0;
+  requiredWords.forEach((word: string) => {
+    if (typedWords.some((typedWord: string) => typedWord.includes(word) || word.includes(typedWord))) {
+      score += 1;
+    }
+  });
+  
+  return score;
 }
 
 function calculateAttentionScore(attention: any): number {
   if (attention.useSubtraction) {
-    return attention.answers?.filter((answer: string) => answer?.trim() !== "").length || 0;
+    // Check subtraction answers (100-7, 93-7, 86-7, 79-7, 72-7)
+    const correctAnswers = [93, 86, 79, 72, 65];
+    let score = 0;
+    
+    attention.answers?.forEach((answer: string, index: number) => {
+      const numAnswer = parseInt(answer?.trim());
+      if (numAnswer === correctAnswers[index]) {
+        score += 1;
+      }
+    });
+    
+    return score;
   } else {
-    return attention.spellWorld?.trim() ? 5 : 0;
+    // Check spelling "WORLD" backwards
+    const spellWorld = attention.spellWorld?.trim().toLowerCase();
+    const correctSpelling = 'dlrow';
+    
+    if (spellWorld === correctSpelling) {
+      return 5;
+    } else {
+      // Partial credit for getting some letters right
+      let score = 0;
+      for (let i = 0; i < Math.min(spellWorld?.length || 0, correctSpelling.length); i++) {
+        if (spellWorld?.[i] === correctSpelling[i]) {
+          score += 1;
+        }
+      }
+      return score;
+    }
   }
 }
 
 function calculateRecallScore(recall: any): number {
+  const requiredWords = ['apple', 'table', 'pen'];
   let score = 0;
-  if (recall.word1?.trim()) score += 1;
-  if (recall.word2?.trim()) score += 1;
-  if (recall.word3?.trim()) score += 1;
+  
+  // Check each recalled word
+  const word1 = recall.word1?.trim().toLowerCase();
+  const word2 = recall.word2?.trim().toLowerCase();
+  const word3 = recall.word3?.trim().toLowerCase();
+  
+  if (requiredWords.some(word => word1?.includes(word) || word.includes(word1))) {
+    score += 1;
+  }
+  if (requiredWords.some(word => word2?.includes(word) || word.includes(word2))) {
+    score += 1;
+  }
+  if (requiredWords.some(word => word3?.includes(word) || word.includes(word3))) {
+    score += 1;
+  }
+  
   return score;
 }
 
 function calculateLanguageScore(language: any): number {
   let score = 0;
-  if (language.pencil?.trim()) score += 1;
-  if (language.watch?.trim()) score += 1;
-  if (language.repetition?.trim()) score += 1;
-  if (language.command?.trim()) score += 1;
-  if (language.reading?.trim()) score += 1;
-  if (language.writing?.trim()) score += 1;
-  if (language.copying?.trim()) score += 1;
+  
+  // Object naming (2 points) - already handled by ObjectRecognition component
+  if (language.object1?.answer?.trim()) score += 1;
+  if (language.object2?.answer?.trim()) score += 1;
+  
+  // Repetition (1 point) - check for correct sentence
+  const repetition = language.repetition?.trim().toLowerCase();
+  const correctSentence = 'no ifs, ands, or buts';
+  if (repetition === correctSentence || language.repetitionAudio) {
+    score += 1;
+  }
+  
+  // Command (3 points) - check if they completed the task
+  const command = language.command?.trim().toLowerCase();
+  if (command === 'yes' || command === 'y' || command === 'true' || 
+      command?.includes('completed') || command?.includes('done')) {
+    score += 3;
+  }
+  
+  // Reading (1 point) - check if they followed instruction
+  const reading = language.reading?.trim().toLowerCase();
+  if (reading === 'yes' || reading === 'y' || reading === 'true' || 
+      reading?.includes('closed') || reading?.includes('eyes')) {
+    score += 1;
+  }
+  
+  // Writing (1 point) - check if they wrote a sentence
+  const writing = language.writing?.trim();
+  if (writing && writing.length > 10 && writing.includes(' ')) {
+    score += 1;
+  }
+  
+  // Copying (1 point) - check if they completed the drawing
+  const copying = language.copying?.trim().toLowerCase();
+  if (copying === 'yes' || copying === 'y' || copying === 'true' || 
+      copying?.includes('completed') || copying?.includes('done')) {
+    score += 1;
+  }
+  
   return score;
 }
 

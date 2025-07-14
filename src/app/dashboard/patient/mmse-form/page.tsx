@@ -9,6 +9,7 @@ import { TextAreaGroup } from "@/components/FormElements/InputGroup/text-area";
 import { useSession } from "next-auth/react";
 import DrawingCanvas from "@/components/DrawingCanvas";
 import ObjectRecognition from "@/components/ObjectRecognition";
+import VoiceRecorder from "@/components/VoiceRecorder";
 
 interface MMSEFormData {
   // Section 1: Orientation
@@ -51,6 +52,7 @@ interface MMSEFormData {
       answer: string;
     };
     repetition: string;
+    repetitionAudio?: string; // Base64 audio data
     command: string;
     reading: string;
     writing: string;
@@ -106,6 +108,7 @@ export default function MMSEFormPage() {
         answer: "",
       },
       repetition: "",
+      repetitionAudio: "",
       command: "",
       reading: "",
       writing: "",
@@ -195,45 +198,196 @@ export default function MMSEFormPage() {
     setTimeout(() => setDrawingSaved(false), 3000);
   };
 
+  const handleAudioSave = (audioData: string) => {
+    setFormData(prev => ({
+      ...prev,
+      language: {
+        ...prev.language,
+        repetitionAudio: audioData
+      }
+    }));
+    
+    // Show a brief success message
+    if (audioData) {
+      const audioSaved = document.createElement('div');
+      audioSaved.className = 'fixed top-4 right-4 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow-lg z-50';
+      audioSaved.textContent = '✓ Audio recorded successfully!';
+      document.body.appendChild(audioSaved);
+      
+      setTimeout(() => {
+        document.body.removeChild(audioSaved);
+      }, 3000);
+    }
+  };
+
   const calculateOrientationScore = () => {
     const { orientation } = formData;
     let score = 0;
     
-    // Simple scoring based on whether answers are provided
-    if (orientation.yearAnswer.trim()) score += 1;
-    if (orientation.seasonAnswer.trim()) score += 1;
-    if (orientation.dateAnswer.trim()) score += 1;
-    if (orientation.dayAnswer.trim()) score += 1;
-    if (orientation.monthAnswer.trim()) score += 1;
-    if (orientation.stateAnswer.trim()) score += 1;
-    if (orientation.countryAnswer.trim()) score += 1;
-    if (orientation.hospitalAnswer.trim()) score += 1;
-    if (orientation.floorAnswer.trim()) score += 1;
-    if (orientation.cityAnswer.trim()) score += 1;
+    // Get current date for validation
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.toLocaleString('en-US', { month: 'long' });
+    const currentDay = now.toLocaleString('en-US', { weekday: 'long' });
+    const currentDate = now.getDate();
+    
+    // Determine current season
+    const month = now.getMonth();
+    let currentSeason = '';
+    if (month >= 2 && month <= 4) currentSeason = 'Spring';
+    else if (month >= 5 && month <= 7) currentSeason = 'Summer';
+    else if (month >= 8 && month <= 10) currentSeason = 'Autumn';
+    else currentSeason = 'Winter';
+    
+    // Validate each answer with some tolerance for variations
+    const yearAnswer = orientation.yearAnswer.trim().toLowerCase();
+    if (yearAnswer === currentYear.toString() || 
+        yearAnswer === (currentYear - 1).toString() || 
+        yearAnswer === (currentYear + 1).toString()) {
+      score += 1;
+    }
+    
+    const seasonAnswer = orientation.seasonAnswer.trim().toLowerCase();
+    if (seasonAnswer === currentSeason.toLowerCase() || 
+        seasonAnswer === 'summer' || seasonAnswer === 'winter' || 
+        seasonAnswer === 'spring' || seasonAnswer === 'autumn' ||
+        seasonAnswer === 'fall') {
+      score += 1;
+    }
+    
+    const dateAnswer = orientation.dateAnswer.trim();
+    if (dateAnswer && dateAnswer.length > 0) {
+      // Accept reasonable date formats
+      score += 1;
+    }
+    
+    const dayAnswer = orientation.dayAnswer.trim().toLowerCase();
+    if (dayAnswer === currentDay.toLowerCase() || 
+        dayAnswer === 'monday' || dayAnswer === 'tuesday' || 
+        dayAnswer === 'wednesday' || dayAnswer === 'thursday' || 
+        dayAnswer === 'friday' || dayAnswer === 'saturday' || 
+        dayAnswer === 'sunday') {
+      score += 1;
+    }
+    
+    const monthAnswer = orientation.monthAnswer.trim().toLowerCase();
+    if (monthAnswer === currentMonth.toLowerCase() || 
+        monthAnswer === 'january' || monthAnswer === 'february' || 
+        monthAnswer === 'march' || monthAnswer === 'april' || 
+        monthAnswer === 'may' || monthAnswer === 'june' || 
+        monthAnswer === 'july' || monthAnswer === 'august' || 
+        monthAnswer === 'september' || monthAnswer === 'october' || 
+        monthAnswer === 'november' || monthAnswer === 'december') {
+      score += 1;
+    }
+    
+    // Location questions - more flexible
+    const stateAnswer = orientation.stateAnswer.trim().toLowerCase();
+    if (stateAnswer && stateAnswer.length > 2) {
+      score += 1;
+    }
+    
+    const countryAnswer = orientation.countryAnswer.trim().toLowerCase();
+    if (countryAnswer === 'pakistan' || countryAnswer === 'pak' || 
+        countryAnswer && countryAnswer.length > 2) {
+      score += 1;
+    }
+    
+    const hospitalAnswer = orientation.hospitalAnswer.trim();
+    if (hospitalAnswer && hospitalAnswer.length > 2) {
+      score += 1;
+    }
+    
+    const floorAnswer = orientation.floorAnswer.trim().toLowerCase();
+    if (floorAnswer && (floorAnswer.includes('floor') || 
+        floorAnswer.includes('level') || floorAnswer.includes('ground') ||
+        floorAnswer.includes('1') || floorAnswer.includes('2') || 
+        floorAnswer.includes('3') || floorAnswer.includes('4') || 
+        floorAnswer.includes('5'))) {
+      score += 1;
+    }
+    
+    const cityAnswer = orientation.cityAnswer.trim();
+    if (cityAnswer && cityAnswer.length > 2) {
+      score += 1;
+    }
     
     return score;
   };
 
   const calculateRegistrationScore = () => {
     const { registration } = formData;
-    return registration.wordsTyped.trim() ? 3 : 0;
+    const wordsTyped = registration.wordsTyped.trim().toLowerCase();
+    
+    // Check if all three required words are present
+    const requiredWords = ['apple', 'table', 'pen'];
+    const typedWords = wordsTyped.split(/[,\s]+/).filter(word => word.length > 0);
+    
+    let score = 0;
+    requiredWords.forEach(word => {
+      if (typedWords.some(typedWord => typedWord.includes(word) || word.includes(typedWord))) {
+        score += 1;
+      }
+    });
+    
+    return score;
   };
 
   const calculateAttentionScore = () => {
     const { attention } = formData;
     if (attention.useSubtraction) {
-      return attention.answers.filter(answer => answer.trim() !== "").length;
+      // Check subtraction answers (100-7, 93-7, 86-7, 79-7, 72-7)
+      const correctAnswers = [93, 86, 79, 72, 65];
+      let score = 0;
+      
+      attention.answers.forEach((answer, index) => {
+        const numAnswer = parseInt(answer.trim());
+        if (numAnswer === correctAnswers[index]) {
+          score += 1;
+        }
+      });
+      
+      return score;
     } else {
-      return attention.spellWorld.trim() ? 5 : 0;
+      // Check spelling "WORLD" backwards
+      const spellWorld = attention.spellWorld.trim().toLowerCase();
+      const correctSpelling = 'dlrow';
+      
+      if (spellWorld === correctSpelling) {
+        return 5;
+      } else {
+        // Partial credit for getting some letters right
+        let score = 0;
+        for (let i = 0; i < Math.min(spellWorld.length, correctSpelling.length); i++) {
+          if (spellWorld[i] === correctSpelling[i]) {
+            score += 1;
+          }
+        }
+        return score;
+      }
     }
   };
 
   const calculateRecallScore = () => {
     const { recall } = formData;
+    const requiredWords = ['apple', 'table', 'pen'];
     let score = 0;
-    if (recall.word1.trim()) score += 1;
-    if (recall.word2.trim()) score += 1;
-    if (recall.word3.trim()) score += 1;
+    
+    // Check each recalled word
+    const word1 = recall.word1.trim().toLowerCase();
+    const word2 = recall.word2.trim().toLowerCase();
+    const word3 = recall.word3.trim().toLowerCase();
+    
+    if (requiredWords.some(word => word1.includes(word) || word.includes(word1))) {
+      score += 1;
+    }
+    if (requiredWords.some(word => word2.includes(word) || word.includes(word2))) {
+      score += 1;
+    }
+    if (requiredWords.some(word => word3.includes(word) || word.includes(word3))) {
+      score += 1;
+    }
+    
     return score;
   };
 
@@ -241,24 +395,43 @@ export default function MMSEFormPage() {
     const { language } = formData;
     let score = 0;
     
-    // Object naming (2 points)
+    // Object naming (2 points) - already handled by ObjectRecognition component
     if (language.object1.answer.trim()) score += 1;
     if (language.object2.answer.trim()) score += 1;
     
-    // Repetition (1 point)
-    if (language.repetition.trim()) score += 1;
+    // Repetition (1 point) - check for correct sentence
+    const repetition = language.repetition.trim().toLowerCase();
+    const correctSentence = 'no ifs, ands, or buts';
+    if (repetition === correctSentence || language.repetitionAudio) {
+      score += 1;
+    }
     
-    // Command (3 points)
-    if (language.command.trim()) score += 3;
+    // Command (3 points) - check if they completed the task
+    const command = language.command.trim().toLowerCase();
+    if (command === 'yes' || command === 'y' || command === 'true' || 
+        command.includes('completed') || command.includes('done')) {
+      score += 3;
+    }
     
-    // Reading (1 point)
-    if (language.reading.trim()) score += 1;
+    // Reading (1 point) - check if they followed instruction
+    const reading = language.reading.trim().toLowerCase();
+    if (reading === 'yes' || reading === 'y' || reading === 'true' || 
+        reading.includes('closed') || reading.includes('eyes')) {
+      score += 1;
+    }
     
-    // Writing (1 point)
-    if (language.writing.trim()) score += 1;
+    // Writing (1 point) - check if they wrote a sentence
+    const writing = language.writing.trim();
+    if (writing && writing.length > 10 && writing.includes(' ')) {
+      score += 1;
+    }
     
-    // Copying (1 point)
-    if (language.copying.trim()) score += 1;
+    // Copying (1 point) - check if they completed the drawing
+    const copying = language.copying.trim().toLowerCase();
+    if (copying === 'yes' || copying === 'y' || copying === 'true' || 
+        copying.includes('completed') || copying.includes('done')) {
+      score += 1;
+    }
     
     return score;
   };
@@ -580,8 +753,26 @@ export default function MMSEFormPage() {
           userAnswer={formData.language.object2.answer}
           onAnswerChange={(objectName, answer) => updateObjectAnswer('object2', objectName, answer)}
         />
-        <InputGroup
+        {/* Voice Recording for Repetition */}
+        <VoiceRecorder
           label="Please repeat this sentence: 'No ifs, ands, or buts.'"
+          placeholder="Click record to start speaking the sentence..."
+          onAudioSave={handleAudioSave}
+        />
+        
+        {/* Audio Recording Status */}
+        {formData.language.repetitionAudio && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900 dark:border-green-700">
+            <div className="flex items-center">
+              <span className="mr-2 text-xl">🎤</span>
+              <span className="text-green-800 dark:text-green-200 font-medium">Audio recording saved</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Text input as backup */}
+        <InputGroup
+          label="Or type the sentence here (backup option):"
           placeholder="Type the sentence here"
           type="text"
           value={formData.language.repetition}
@@ -604,6 +795,8 @@ export default function MMSEFormPage() {
         <TextAreaGroup
           label="Please write a sentence of your choice."
           placeholder="Type your sentence here"
+          value={formData.language.writing}
+          handleChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateLanguage('writing', e.target.value)}
         />
         
         {/* Copying Section with Image and Drawing Canvas */}

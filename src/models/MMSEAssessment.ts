@@ -58,9 +58,16 @@ const mmseAssessmentSchema = new mongoose.Schema({
   },
   
   language: {
-    pencil: String,
-    watch: String,
+    object1: {
+      name: String,
+      answer: String
+    },
+    object2: {
+      name: String,
+      answer: String
+    },
     repetition: String,
+    repetitionAudio: String, // Base64 audio data from voice recorder
     command: String,
     reading: String,
     writing: String,

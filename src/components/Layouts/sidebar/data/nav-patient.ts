@@ -20,7 +20,7 @@ export const NAV_DATA = [
         items: [
           {
             title: "Fill Form",
-            url: "/dashboard/admin/mmse-form",
+            url: "/dashboard/patient/mmse-form",
           },
         //   {
         //     title: "Form Layout",
